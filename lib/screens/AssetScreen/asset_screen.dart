@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_challenge_tractian/models/asset.dart';
 import 'package:flutter_challenge_tractian/models/location.dart';
 import 'package:flutter_challenge_tractian/models/tree_node.dart';
@@ -19,8 +20,10 @@ class AssetScreen extends StatefulWidget {
 }
 
 class _AssetScreenState extends State<AssetScreen> {
+  TextEditingController textFieldController = TextEditingController();
   String statusFilter = '';
   String energySensorFilter = '';
+  String textFieldSearch = '';
   List<TreeNode> treeView = [];
 
   List<TreeNode> getNodesFromAssets() {
@@ -111,11 +114,17 @@ class _AssetScreenState extends State<AssetScreen> {
     List<TreeNode> rootNodes,
     Map<String, TreeNode> nodeMap,
     List<String> filters,
+    String textSearch,
   ) {
     for (TreeNode node in rootNodes) {
       if (node.children == null || node.children!.isEmpty) {
+        bool existed = false;
+        if (textSearch.isNotEmpty && node.name.contains(textSearch)) {
+          existed = true;
+        }
         if (filters.contains(node.status) ||
-            filters.contains(node.sensorType)) {
+            filters.contains(node.sensorType) ||
+            existed) {
           if (node.parentId == null && node.locationId == null) {
             // filteredNodes.add(node);
             addUniqueNode(filteredNodes, node);
@@ -127,33 +136,25 @@ class _AssetScreenState extends State<AssetScreen> {
             }
           }
         } else {
-          final index = filteredNodes.indexWhere((parent) =>
-              parent.id == node.parentId || parent.id == node.locationId);
-          if (index == -1) {
-            continue;
-          }
-          final parent = filteredNodes[index];
-          final parentChildren = parent.children ?? [];
-          parentChildren.removeWhere((child) => child.id == node.id);
-          filteredNodes[index] = TreeNode(
-            name: parent.name,
-            id: parent.id,
-            nodeType: parent.nodeType,
-            parentId: parent.parentId,
-            locationId: parent.locationId,
-            sensorType: parent.sensorType,
-            status: parent.status,
-            children: parentChildren,
-          );
           continue;
         }
       } else {
-        getFilteredNodes(filteredNodes, node.children!, nodeMap, filters);
+        getFilteredNodes(
+          filteredNodes,
+          node.children!,
+          nodeMap,
+          filters,
+          textSearch,
+        );
       }
     }
   }
 
-  void buildTreeStructure({String? statusFilter, String? energySensorFilter}) {
+  void buildTreeStructure({
+    String? statusFilter,
+    String? energySensorFilter,
+    String? textSearch,
+  }) {
     final nodes = getNodesFromAssets();
     Map<String, TreeNode> nodeMap = {for (var node in nodes) node.id: node};
     List<TreeNode> rootNodes = [];
@@ -206,21 +207,6 @@ class _AssetScreenState extends State<AssetScreen> {
       statusFilter: statusFilter,
     );
 
-    // if (statusFilter != null && statusFilter.isNotEmpty) {
-    //   var filteredNodes = <TreeNode>[];
-    //   for (var node in rootNodes) {
-    //     List<TreeNode> filteredNodesForRoot = filterNodes(
-    //       node,
-    //       nodeMap,
-    //       statusFilter,
-    //     );
-    //     filteredNodes.addAll(filteredNodesForRoot);
-    //   }
-    //   setState(() {
-    //     rootNodes = filteredNodes;
-    //   });
-    // }
-
     List<String> filters = [];
 
     if (statusFilter != null && statusFilter.isNotEmpty) {
@@ -231,22 +217,35 @@ class _AssetScreenState extends State<AssetScreen> {
       filters.add(energySensorFilter);
     }
 
-    if (filters.isNotEmpty) {
+    if (filters.isNotEmpty || (textSearch != null && textSearch.isNotEmpty)) {
       var filteredNodes = <TreeNode>[];
-      getFilteredNodes(filteredNodes, rootNodes, nodeMap, filters);
+      getFilteredNodes(
+          filteredNodes, rootNodes, nodeMap, filters, textSearch ?? '');
       rootNodes = filteredNodes;
     }
 
     setState(() {
       treeView = rootNodes;
     });
+  }
 
-    // return rootNodes;
+  void textFieldListener() {
+    setState(() {
+      textFieldSearch = textFieldController.value.text;
+      Future.delayed(const Duration(milliseconds: 500), () {
+        buildTreeStructure(
+          statusFilter: statusFilter,
+          energySensorFilter: energySensorFilter,
+          textSearch: textFieldSearch,
+        );
+      });
+    });
   }
 
   @override
   void initState() {
     buildTreeStructure();
+    textFieldController.addListener(textFieldListener);
     super.initState();
   }
 
@@ -254,12 +253,14 @@ class _AssetScreenState extends State<AssetScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Assets'),
+        title: const Text('Assets'),
       ),
       body: Center(
         child: Column(
           children: [
-            TextField(),
+            TextField(
+              controller: textFieldController,
+            ),
             Row(
               children: [
                 ElevatedButton(
@@ -274,9 +275,10 @@ class _AssetScreenState extends State<AssetScreen> {
                       buildTreeStructure(
                         energySensorFilter: energySensorFilter,
                         statusFilter: statusFilter,
+                        textSearch: textFieldSearch,
                       );
                     },
-                    child: Row(
+                    child: const Row(
                       children: [Text('Sensor de Energia')],
                     )),
                 ElevatedButton(
@@ -292,9 +294,10 @@ class _AssetScreenState extends State<AssetScreen> {
                       buildTreeStructure(
                         statusFilter: statusFilter,
                         energySensorFilter: energySensorFilter,
+                        textSearch: textFieldSearch,
                       );
                     },
-                    child: Row(
+                    child: const Row(
                       children: [Text('Crítico')],
                     )),
               ],
