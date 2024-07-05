@@ -13,8 +13,11 @@ class TreeView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      children: nodes.map((node) => NodeWidget(node: node)).toList(),
+    return ListView.builder(
+      itemCount: nodes.length,
+      itemBuilder: (context, index) {
+        return NodeWidget(node: nodes[index]);
+      },
     );
   }
 }

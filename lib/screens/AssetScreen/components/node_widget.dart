@@ -47,12 +47,12 @@ class _NodeWidgetState extends State<NodeWidget> {
             child: Row(
               children: [
                 if (hasChildren) ...[
-                  Icon(
+                  const Icon(
                     Icons.arrow_downward,
                     size: 18,
                   ),
                 ] else ...[
-                  SizedBox(width: 18)
+                  const SizedBox(width: 18)
                 ],
                 if (widget.node.nodeType == NodeType.location.name) ...[
                   locationIcon,
@@ -82,9 +82,16 @@ class _NodeWidgetState extends State<NodeWidget> {
               visible: showChildren,
               child: Column(
                 children: [
-                  ...widget.node.children!
-                      .map((child) => NodeWidget(node: child))
-                      .toList(),
+                  ListView.builder(
+                    itemCount: widget.node.children!.length,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemBuilder: (context, index) {
+                      return NodeWidget(
+                        node: widget.node.children![index],
+                      );
+                    },
+                  ),
                 ],
               ),
             )
